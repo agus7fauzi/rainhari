@@ -1,12 +1,13 @@
 package rainhari
 
 type Service interface {
-	Init()
-	Run()
+	Name() string
+	Init(...Options)
+	Run() error
 }
 
 type Option func(*Options)
 
-func NewService() Service {
-
+func NewService(opts ...Option) Service {
+	return newService(opts...)
 }

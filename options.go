@@ -6,7 +6,7 @@ type Options struct {
 	Server server.Server
 }
 
-func newOptions(opts ...Options) Options {
+func newOptions(opts ...Option) Options {
 	opt := Options{
 		Server: server,
 	}

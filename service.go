@@ -4,6 +4,7 @@ type service struct {
 	opts Options
 }
 
-func newService(opts ...Options) Service {
+func newService(opts ...Option) Service {
 	service := new(service)
+	options := newOptions(opts...)
 }
