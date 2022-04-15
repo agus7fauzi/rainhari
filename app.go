@@ -16,11 +16,12 @@ limitations under the License.
 
 package rainhari
 
-type service struct {
+type app struct {
 	opts Options
 }
 
-func newService(opts ...Option) Service {
-	service := new(service)
-	options := newOptions(opts...)
+func newApp(opts ...Option) App {
+	return nil
+	// app := new(app)
+	// options := newOptions(opts...)
 }

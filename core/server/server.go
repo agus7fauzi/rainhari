@@ -24,4 +24,4 @@ type Server interface {
 
 type Option func(*Options)
 
-var DefaultServer Server = newRpcServer()
+// var DefaultServer Server = newRpcServer()

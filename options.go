@@ -22,14 +22,20 @@ type Options struct {
 	Server server.Server
 }
 
-func newOptions(opts ...Option) Options {
-	opt := Options{
-		Server: server,
-	}
-}
+// func newOptions(opts ...Option) Options {
+// 	opt := Options{
+// 		Server: server,
+// 	}
+// }
 
 func Name(n string) Option {
 	return func(o *Options) {
 		o.Server.Init(server.Name(n))
+	}
+}
+
+func Version(v string) Option {
+	return func(o *Options) {
+		o.Server.Init(server.Version(v))
 	}
 }
