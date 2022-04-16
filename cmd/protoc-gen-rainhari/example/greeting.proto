@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package example;
+
+option go_package = "github.com/agus7fauzi/cmd/protoc-gen-rainhari/example";
+
+service Greeter {
+	rpc Hello(Request) returns (Response) {}
+	rpc Stream(stream Request) returns (stream Response) {}
+}
+
+message Request {
+	string name = 1;
+}
+
+message Response {
+	string msg = 1;
+}
