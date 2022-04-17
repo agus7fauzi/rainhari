@@ -16,15 +16,21 @@ limitations under the License.
 
 package rainhari
 
-type App interface {
+type Service interface {
 	Name() string
 	Version() string
 	Init(...Options)
 	Run() error
 }
 
+type service struct {
+	opts Options
+}
+
 type Option func(*Options)
 
-func NewApp(opts ...Option) App {
-	return newApp(opts...)
+func NewService(opts ...Option) Service {
+	return nil
+	// service := new(service)
+	// options := newOptions(opts...)
 }
