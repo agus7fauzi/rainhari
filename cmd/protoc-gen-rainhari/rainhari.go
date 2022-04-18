@@ -24,9 +24,10 @@ import (
 )
 
 const (
-	contextPackage = protogen.GoImportPath("context")
-	serverPackage  = protogen.GoImportPath("github.com/agus7fauzi/rainhari/core/server")
-	clientPackage  = protogen.GoImportPath("github.com/agus7fauzi/rainhari/core/client")
+	contextPackage     = protogen.GoImportPath("context")
+	serverPackage      = protogen.GoImportPath("github.com/agus7fauzi/rainhari/core/server")
+	clientPackage      = protogen.GoImportPath("github.com/agus7fauzi/rainhari/core/client")
+	deprecationComment = "// Deprecated: Do not use."
 )
 
 var reversedClientName = map[string]bool{}
@@ -74,7 +75,7 @@ func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 	for _, method := range service.Methods {
 		g.Annotate(svcName+"."+method.GoName, method.Location)
 		if method.Desc.Options().(*descriptorpb.MethodOptions).GetDeprecated() {
-			g.P("// deprecated")
+			g.P(deprecationComment)
 		}
 		g.P(method.Comments.Leading, generateClientSignature(svcName, method, g))
 	}
