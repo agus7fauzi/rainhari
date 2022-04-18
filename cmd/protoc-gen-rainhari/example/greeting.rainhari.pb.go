@@ -5,8 +5,12 @@ package example
 import (
 	context "context"
 	client "github.com/agus7fauzi/rainhari/core/client"
-	server "github.com/agus7fauzi/rainhari/core/server"
 )
+
+type GreeterService interface {
+	Hello(ctx context.Context, opts ...client.CallOption) (*Response, error)
+	Stream(ctx context.Context, in *Request, opts ...client.CallOption) (example_StreamService, error)
+}
 
 type greeterservice struct {
 	c    client.Client

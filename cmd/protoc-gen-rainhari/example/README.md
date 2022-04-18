@@ -2,7 +2,7 @@
 
 Build and install binary
 ```console
-go build -o ~/go/bin/protoc-gen-rainhari ../main.go
+go build -o ~/go/bin/protoc-gen-rainhari ../main.go ../rainhari.go
 ```
 
 Generate proto

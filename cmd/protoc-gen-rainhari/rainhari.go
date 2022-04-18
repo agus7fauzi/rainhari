@@ -114,7 +114,7 @@ func generateClientSignature(svcName string, method *protogen.Method, g *protoge
 		rspName = svcName + "_" + camelCase(originMethodName) + "Service"
 	}
 
-	return methodName + "(ctx " + contextPackage.String() + ".Context" + reqArg + ", opts ..." + clientPackage.String() + ".CallOption) (" + rspName + ", error)"
+	return methodName + "(ctx " + g.QualifiedGoIdent(contextPackage.Ident("Context")) + reqArg + ", opts ..." + g.QualifiedGoIdent(clientPackage.Ident("CallOption")) + ") (" + rspName + ", error)"
 }
 
 func isASCIILower(c byte) bool {
