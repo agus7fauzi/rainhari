@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"github.com/agus7fauzi/rainhari/cmd/protoc-gen-rainhari/plugin"
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
@@ -26,7 +27,7 @@ func main() {
 			if !f.Generate {
 				continue
 			}
-			generateFile(gen, f)
+			plugin.GenerateFile(gen, f)
 		}
 		return nil
 	})

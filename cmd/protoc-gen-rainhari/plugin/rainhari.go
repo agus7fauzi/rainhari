@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package plugin
 
 import (
 	"strings"
@@ -33,7 +33,7 @@ const (
 var reversedClientName = map[string]bool{}
 
 // GenerateFile generates *.rainhari.pb.go files containing gRPC service definitions.
-func generateFile(gen *protogen.Plugin, file *protogen.File) *protogen.GeneratedFile {
+func GenerateFile(gen *protogen.Plugin, file *protogen.File) *protogen.GeneratedFile {
 	filename := file.GeneratedFilenamePrefix + ".rainhari.pb.go"
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 
