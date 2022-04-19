@@ -49,57 +49,80 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) *protogen.Generated
 
 func generateCoreCode(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile) {
 	// Iterate through all the `service`s in the passed-in file
-	for _, service := range file.Services {
-		generateService(gen, file, g, service)
+	for i, service := range file.Services {
+		generateService(gen, file, g, service, i)
 	}
 }
 
-func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile, service *protogen.Service) {
+func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile, service *protogen.Service, index int) {
+	path := "6," + string(index)
 	originSvcName := service.GoName
-	svcName := strings.ToLower(originSvcName)
+	serviceName := strings.ToLower(originSvcName)
 
 	if pkg := file.GoPackageName; pkg != "" {
-		svcName = string(pkg)
+		serviceName = string(pkg)
 	}
 
 	cCaseSvcName := camelCase(originSvcName)
-	svcAlias := cCaseSvcName + "Service"
+	serviceAlias := cCaseSvcName + "Service"
 
 	// Strip suffix
-	if strings.HasSuffix(svcAlias, "ServiceService") {
-		svcAlias = strings.TrimSuffix(svcAlias, "Service")
+	if strings.HasSuffix(serviceAlias, "ServiceService") {
+		serviceAlias = strings.TrimSuffix(serviceAlias, "Service")
 	}
 
 	// Client interface
-	g.P("type ", svcAlias, " interface {")
-	for _, method := range service.Methods {
-		g.Annotate(svcName+"."+method.GoName, method.Location)
+	g.P("type ", serviceAlias, " interface {")
+	for i, method := range service.Methods {
+		g.P(method.Comments.Leading, path+",2,"+string(i))
+		g.Annotate(serviceName+"."+method.GoName, method.Location)
 		if method.Desc.Options().(*descriptorpb.MethodOptions).GetDeprecated() {
 			g.P(deprecationComment)
 		}
-		g.P(method.Comments.Leading, generateClientSignature(svcName, method, g))
+		g.P(method.Comments.Leading, generateClientSignature(serviceName, method, g))
 	}
 	g.P("}")
 	g.P()
 
 	// Client struct
-	g.P("type ", unexport(svcAlias), " struct {")
-	g.P("c client.Client")
+	g.P("type ", unexport(serviceAlias), " struct {")
+	g.P("c " + g.QualifiedGoIdent(clientPackage.Ident("Client")))
 	g.P("name string")
 	g.P("}")
 	g.P()
 
 	// NewClient factory
-	g.P("func New", svcAlias, " (name string, c client.Client) ", svcAlias, " {")
-	g.P("return &", unexport(svcAlias), "{")
+	g.P("func New", serviceAlias, " (name string, c "+g.QualifiedGoIdent(clientPackage.Ident("Client"))+") ", serviceAlias, " {")
+	g.P("return &", unexport(serviceAlias), "{")
 	g.P("c: c,")
 	g.P("name: name,")
 	g.P("}")
 	g.P("}")
 	g.P()
+
+	var methodIndex, streamIndex int
+	serviceDesc := "_" + serviceName + "_serviceDesc"
+	// Client method implementations
+	for _, method := range service.Methods {
+		var descExpr string
+		if !method.Desc.IsStreamingServer() {
+			// Unary RPC method
+			descExpr = "&" + serviceDesc + ".Methods[" + string(methodIndex) + "]"
+			methodIndex++
+		} else {
+			// Streaming RPC method
+			descExpr = "&" + serviceDesc + ".Methods[" + string(streamIndex) + "]"
+			streamIndex++
+		}
+		// generateClientMethod()
+	}
 }
 
-func generateClientSignature(svcName string, method *protogen.Method, g *protogen.GeneratedFile) string {
+// func generateClientMethod() {
+
+}
+
+func generateClientSignature(serviceName string, method *protogen.Method, g *protogen.GeneratedFile) string {
 	originMethodName := method.GoName
 	methodName := camelCase(originMethodName)
 
@@ -112,7 +135,7 @@ func generateClientSignature(svcName string, method *protogen.Method, g *protoge
 	}
 	rspName := "*" + g.QualifiedGoIdent(method.Output.GoIdent)
 	if method.Desc.IsStreamingClient() || method.Desc.IsStreamingServer() {
-		rspName = svcName + "_" + camelCase(originMethodName) + "Service"
+		rspName = serviceName + "_" + camelCase(originMethodName) + "Service"
 	}
 
 	return methodName + "(ctx " + g.QualifiedGoIdent(contextPackage.Ident("Context")) + reqArg + ", opts ..." + g.QualifiedGoIdent(clientPackage.Ident("CallOption")) + ") (" + rspName + ", error)"
