@@ -107,19 +107,77 @@ func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 		var descExpr string
 		if !method.Desc.IsStreamingServer() {
 			// Unary RPC method
-			descExpr = "&" + serviceDesc + ".Methods[" + string(methodIndex) + "]"
+			descExpr = "&" + serviceDesc + ".Methods[" + string(rune(methodIndex)) + "]"
 			methodIndex++
 		} else {
 			// Streaming RPC method
-			descExpr = "&" + serviceDesc + ".Methods[" + string(streamIndex) + "]"
+			descExpr = "&" + serviceDesc + ".Methods[" + string(rune(streamIndex)) + "]"
 			streamIndex++
 		}
-		// generateClientMethod()
+		generateClientMethod(gen, file, g, method, serviceName, cCaseSvcName, serviceDesc, descExpr)
 	}
 }
 
-// func generateClientMethod() {
+func generateClientMethod(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile, method *protogen.Method, reqSvc, cCaseSvcName, serviceDesc string, descExpr string) {
+	reqMethod := cCaseSvcName + "." + method.GoName
+	methName := camelCase(method.GoName)
+	inType := method.Input.GoIdent
+	outType := method.Output.GoIdent
 
+	serviceAlias := cCaseSvcName + "Service"
+
+	// strip suffix
+	if strings.HasSuffix(serviceAlias, "ServiceService") {
+		serviceAlias = strings.TrimSuffix(serviceAlias, "Service")
+	}
+
+	g.P("func (c *", unexport(serviceAlias), ") ", generateClientSignature(cCaseSvcName, method, g), "{")
+	if !method.Desc.IsStreamingServer() && !method.Desc.IsStreamingClient() {
+		g.P(`req := c.c.NewRequest(c.name, `, reqMethod, `", in)`)
+		g.P("out := new(", outType, ")")
+		g.P("err := ", `c.c.Call(ctx, req, out, opts...)`)
+		g.P("if err != nil { return nil, err }")
+		g.P("return out, nil")
+		g.P("}")
+		g.P()
+		return
+	}
+	streamType := unexport(cCaseSvcName) + methName
+	g.P(`req := c.c.NewRequest(c.name, "`, reqMethod, `", &`, inType, `{})`)
+	g.P("stream, err := c.c.Stream(ctx, req, opts...)")
+	g.P("if err != nil { return nil, err }")
+
+	if !method.Desc.IsStreamingClient() {
+		g.P("if err := stream.Send(in); err != nil { return nil, err }")
+	}
+
+	g.P("return &", streamType, "{stream}, nil")
+	g.P("}")
+	g.P()
+
+	genSend := method.Desc.IsStreamingClient()
+	genRecv := method.Desc.IsStreamingServer()
+
+	// Stream auxiliary types and methods
+	g.P("type ", cCaseSvcName, "_", methName, "Service interface {")
+	g.P("Context() context.Context")
+	g.P("SendMsg(interface{}) error")
+	g.P("RecvMsg(interface{}) error")
+	g.P("Close() error")
+
+	if genSend {
+		g.P("Send(*", inType, ") error")
+	}
+	if genRecv {
+		g.P("Recv() (*", outType, ", error)")
+	}
+	g.P("}")
+	g.P()
+
+	g.P("type ", streamType, " struct {")
+	g.P("stream", g.QualifiedGoIdent(clientPackage.Ident("Stream")))
+	g.P("}")
+	g.P()
 }
 
 func generateClientSignature(serviceName string, method *protogen.Method, g *protogen.GeneratedFile) string {
