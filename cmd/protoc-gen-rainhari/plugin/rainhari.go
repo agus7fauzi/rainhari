@@ -55,7 +55,6 @@ func generateCoreCode(gen *protogen.Plugin, file *protogen.File, g *protogen.Gen
 }
 
 func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile, service *protogen.Service, index int) {
-	// path := "6," + string(index)
 	originSvcName := service.GoName
 	serviceName := strings.ToLower(originSvcName)
 
@@ -74,7 +73,6 @@ func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 	// Client interface
 	g.P("type ", serviceAlias, " interface {")
 	for _, method := range service.Methods {
-		// g.P(method.Comments.Leading, path+",2,"+string(i))
 		g.Annotate(serviceName+"."+method.GoName, method.Location)
 		if method.Desc.Options().(*descriptorpb.MethodOptions).GetDeprecated() {
 			g.P(deprecationComment)
