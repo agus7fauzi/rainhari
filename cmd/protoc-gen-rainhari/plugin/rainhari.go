@@ -55,7 +55,7 @@ func generateCoreCode(gen *protogen.Plugin, file *protogen.File, g *protogen.Gen
 }
 
 func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile, service *protogen.Service, index int) {
-	path := "6," + string(index)
+	// path := "6," + string(index)
 	originSvcName := service.GoName
 	serviceName := strings.ToLower(originSvcName)
 
@@ -73,13 +73,13 @@ func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 
 	// Client interface
 	g.P("type ", serviceAlias, " interface {")
-	for i, method := range service.Methods {
-		g.P(method.Comments.Leading, path+",2,"+string(i))
+	for _, method := range service.Methods {
+		// g.P(method.Comments.Leading, path+",2,"+string(i))
 		g.Annotate(serviceName+"."+method.GoName, method.Location)
 		if method.Desc.Options().(*descriptorpb.MethodOptions).GetDeprecated() {
 			g.P(deprecationComment)
 		}
-		g.P(method.Comments.Leading, generateClientSignature(serviceName, method, g))
+		g.P(method.Comments.Leading, generateClientSignature(g, method, serviceName))
 	}
 	g.P("}")
 	g.P()
@@ -131,9 +131,9 @@ func generateClientMethod(gen *protogen.Plugin, file *protogen.File, g *protogen
 		serviceAlias = strings.TrimSuffix(serviceAlias, "Service")
 	}
 
-	g.P("func (c *", unexport(serviceAlias), ") ", generateClientSignature(cCaseSvcName, method, g), "{")
+	g.P("func (c *", unexport(serviceAlias), ") ", generateClientSignature(g, method, cCaseSvcName), "{")
 	if !method.Desc.IsStreamingServer() && !method.Desc.IsStreamingClient() {
-		g.P(`req := c.c.NewRequest(c.name, `, reqMethod, `", in)`)
+		g.P(`req := c.c.NewRequest(c.name, "`, reqMethod, `", in)`)
 		g.P("out := new(", outType, ")")
 		g.P("err := ", `c.c.Call(ctx, req, out, opts...)`)
 		g.P("if err != nil { return nil, err }")
@@ -142,7 +142,7 @@ func generateClientMethod(gen *protogen.Plugin, file *protogen.File, g *protogen
 		g.P()
 		return
 	}
-	streamType := unexport(cCaseSvcName) + methName
+	streamType := unexport(serviceAlias) + methName
 	g.P(`req := c.c.NewRequest(c.name, "`, reqMethod, `", &`, inType, `{})`)
 	g.P("stream, err := c.c.Stream(ctx, req, opts...)")
 	g.P("if err != nil { return nil, err }")
@@ -175,12 +175,52 @@ func generateClientMethod(gen *protogen.Plugin, file *protogen.File, g *protogen
 	g.P()
 
 	g.P("type ", streamType, " struct {")
-	g.P("stream", g.QualifiedGoIdent(clientPackage.Ident("Stream")))
+	g.P("stream ", g.QualifiedGoIdent(clientPackage.Ident("Stream")))
 	g.P("}")
 	g.P()
+
+	g.P("func (x *", streamType, ") Close() error {")
+	g.P("return x.stream.Close()")
+	g.P("}")
+	g.P()
+
+	g.P("func (x *", streamType, ") Context() context.Context {")
+	g.P("return x.stream.Context()")
+	g.P("}")
+	g.P()
+
+	g.P("func (x *", streamType, ") SendMsg(m interface{}) error {")
+	g.P("return x.stream.Send(m)")
+	g.P("}")
+	g.P()
+
+	g.P("func (x *", streamType, ") RecvMsg(m interface{}) error {")
+	g.P("return x.stream.Recv(m)")
+	g.P("}")
+	g.P()
+
+	if genSend {
+		g.P("func (x *", streamType, ") Send(m *", inType, ") error {")
+		g.P("return x.stream.Send(m)")
+		g.P("}")
+		g.P()
+
+	}
+
+	if genRecv {
+		g.P("func (x *", streamType, ") Recv() (*", outType, ", error) {")
+		g.P("m := new(", outType, ")")
+		g.P("err := x.stream.Recv(m)")
+		g.P("if err != nil {")
+		g.P("return nil, err")
+		g.P("}")
+		g.P("return m, nil")
+		g.P("}")
+		g.P()
+	}
 }
 
-func generateClientSignature(serviceName string, method *protogen.Method, g *protogen.GeneratedFile) string {
+func generateClientSignature(g *protogen.GeneratedFile, method *protogen.Method, serviceName string) string {
 	originMethodName := method.GoName
 	methodName := camelCase(originMethodName)
 
@@ -188,7 +228,7 @@ func generateClientSignature(serviceName string, method *protogen.Method, g *pro
 		methodName += "_"
 	}
 	reqArg := ", in *" + g.QualifiedGoIdent(method.Input.GoIdent)
-	if !method.Desc.IsStreamingClient() {
+	if method.Desc.IsStreamingClient() {
 		reqArg = ""
 	}
 	rspName := "*" + g.QualifiedGoIdent(method.Output.GoIdent)
@@ -251,5 +291,5 @@ func unexport(s string) string {
 		return ""
 	}
 
-	return strings.ToLower(s[:1] + s[1:])
+	return strings.ToLower(s[:1]) + s[1:]
 }

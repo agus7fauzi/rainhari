@@ -8,18 +8,79 @@ import (
 )
 
 type GreeterService interface {
-	Hello(ctx context.Context, opts ...client.CallOption) (*Response, error)
-	Stream(ctx context.Context, in *Request, opts ...client.CallOption) (example_StreamService, error)
+	Hello(ctx context.Context, in *Request, opts ...client.CallOption) (*Response, error)
+	Stream(ctx context.Context, opts ...client.CallOption) (example_StreamService, error)
 }
 
-type greeterservice struct {
+type greeterService struct {
 	c    client.Client
 	name string
 }
 
 func NewGreeterService(name string, c client.Client) GreeterService {
-	return &greeterservice{
+	return &greeterService{
 		c:    c,
 		name: name,
 	}
+}
+
+func (c *greeterService) Hello(ctx context.Context, in *Request, opts ...client.CallOption) (*Response, error) {
+	req := c.c.NewRequest(c.name, "Greeter.Hello", in)
+	out := new(Response)
+	err := c.c.Call(ctx, req, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *greeterService) Stream(ctx context.Context, opts ...client.CallOption) (Greeter_StreamService, error) {
+	req := c.c.NewRequest(c.name, "Greeter.Stream", &Request{})
+	stream, err := c.c.Stream(ctx, req, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &greeterServiceStream{stream}, nil
+}
+
+type Greeter_StreamService interface {
+	Context() context.Context
+	SendMsg(interface{}) error
+	RecvMsg(interface{}) error
+	Close() error
+	Send(*Request) error
+	Recv() (*Response, error)
+}
+
+type greeterServiceStream struct {
+	stream client.Stream
+}
+
+func (x *greeterServiceStream) Close() error {
+	return x.stream.Close()
+}
+
+func (x *greeterServiceStream) Context() context.Context {
+	return x.stream.Context()
+}
+
+func (x *greeterServiceStream) SendMsg(m interface{}) error {
+	return x.stream.Send(m)
+}
+
+func (x *greeterServiceStream) RecvMsg(m interface{}) error {
+	return x.stream.Recv(m)
+}
+
+func (x *greeterServiceStream) Send(m *Request) error {
+	return x.stream.Send(m)
+}
+
+func (x *greeterServiceStream) Recv() (*Response, error) {
+	m := new(Response)
+	err := x.stream.Recv(m)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
 }
