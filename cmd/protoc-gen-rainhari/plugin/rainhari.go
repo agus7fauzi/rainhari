@@ -114,6 +114,20 @@ func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 		}
 		generateClientMethod(gen, file, g, method, serviceName, cCaseSvcName, serviceDesc, descExpr)
 	}
+
+	g.P("// Server API for ", serviceName, " service")
+	g.P()
+
+	// Server instance
+	serverType := service.GoName + "Handler"
+	g.P("// ", serverType, " is the server API for ", service.GoName, " service.")
+	g.P("type ", serverType, " interface {")
+	for _, method := range service.Methods {
+		g.Annotate(serverType+"."+method.GoName, method.Location)
+		g.P(generateServerSignature(g, method, serviceName))
+	}
+	g.P("}")
+	g.P()
 }
 
 func generateClientMethod(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile, method *protogen.Method, reqSvc, cCaseSvcName, serviceDesc string, descExpr string) {
@@ -235,6 +249,27 @@ func generateClientSignature(g *protogen.GeneratedFile, method *protogen.Method,
 	}
 
 	return methodName + "(ctx " + g.QualifiedGoIdent(contextPackage.Ident("Context")) + reqArg + ", opts ..." + g.QualifiedGoIdent(clientPackage.Ident("CallOption")) + ") (" + rspName + ", error)"
+}
+
+func generateServerSignature(g *protogen.GeneratedFile, method *protogen.Method, serviceName string) string {
+	oriMethodName := method.GoName
+	methodName := camelCase(oriMethodName)
+
+	var reqArgs []string
+	ret := "error"
+	reqArgs = append(reqArgs, g.QualifiedGoIdent(contextPackage.Ident("Context")))
+
+	if !method.Desc.IsStreamingClient() {
+		reqArgs = append(reqArgs, "*"+g.QualifiedGoIdent(method.Input.GoIdent))
+	}
+	if method.Desc.IsStreamingServer() || method.Desc.IsStreamingClient() {
+		reqArgs = append(reqArgs, serviceName+"_"+camelCase(oriMethodName)+"Stream")
+	}
+	if !method.Desc.IsStreamingClient() && !method.Desc.IsStreamingServer() {
+		reqArgs = append(reqArgs, "*"+g.QualifiedGoIdent(method.Output.GoIdent))
+	}
+
+	return methodName + "(" + strings.Join(reqArgs, ", ") + ") " + ret
 }
 
 func isASCIILower(c byte) bool {
