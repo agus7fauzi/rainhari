@@ -128,6 +128,27 @@ func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 	}
 	g.P("}")
 	g.P()
+
+	// Server registration
+	g.P("func Register", serviceName, "Handler(s ", g.QualifiedGoIdent(serverPackage.Ident("Server")), " hdlr ", serverType, ", opts ...", g.QualifiedGoIdent(serverPackage.Ident("HandlerOption")), ") error {")
+	g.P("type ", unexport(serviceName), " interface {")
+
+	// Generate interface methods
+	for _, method := range service.Methods {
+		methodName := camelCase(method.GoName)
+		inType := g.QualifiedGoIdent(method.Input.GoIdent)
+		outType := g.QualifiedGoIdent(method.Output.GoIdent)
+
+		if !method.Desc.IsStreamingServer() && !method.Desc.IsStreamingClient() {
+			g.P(methodName, "(ctx ", g.QualifiedGoIdent(contextPackage.Ident("Context")), ", in *", inType, ", out *", outType, ") error")
+			continue
+		}
+		g.P(methodName, "(ctx ", g.QualifiedGoIdent(contextPackage.Ident("Context")), ", stream server.Stream) error")
+	}
+	g.P("}")
+	g.P("type ", serviceName, " struct {")
+	g.P(unexport(serviceName))
+	g.P("}")
 }
 
 func generateClientMethod(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile, method *protogen.Method, reqSvc, cCaseSvcName, serviceDesc string, descExpr string) {
