@@ -84,3 +84,11 @@ func (x *greeterServiceStream) Recv() (*Response, error) {
 	}
 	return m, nil
 }
+
+// Server API for example service
+
+// GreeterHandler is the server API for Greeter service.
+type GreeterHandler interface {
+	Hello(context.Context, *Request, *Response) error
+	Stream(context.Context, example_StreamStream) error
+}
