@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
@@ -130,8 +131,8 @@ func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 	g.P()
 
 	// Server registration
-	g.P("func Register", serviceName, "Handler(s ", g.QualifiedGoIdent(serverPackage.Ident("Server")), " hdlr ", serverType, ", opts ...", g.QualifiedGoIdent(serverPackage.Ident("HandlerOption")), ") error {")
-	g.P("type ", unexport(serviceName), " interface {")
+	g.P("func Register", cCaseSvcName, "Handler(s ", g.QualifiedGoIdent(serverPackage.Ident("Server")), ", hdlr ", serverType, ", opts ...", g.QualifiedGoIdent(serverPackage.Ident("HandlerOption")), ") error {")
+	g.P("type ", unexport(cCaseSvcName), " interface {")
 
 	// Generate interface methods
 	for _, method := range service.Methods {
@@ -146,8 +147,23 @@ func generateService(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 		g.P(methodName, "(ctx ", g.QualifiedGoIdent(contextPackage.Ident("Context")), ", stream server.Stream) error")
 	}
 	g.P("}")
-	g.P("type ", serviceName, " struct {")
-	g.P(unexport(serviceName))
+	g.P("type ", cCaseSvcName, " struct {")
+	g.P(unexport(cCaseSvcName))
+	g.P("}")
+	g.P("h := &", unexport(cCaseSvcName), "Handler{hdlr}")
+	for _, method := range service.Method {
+		if method.Options != nil && proto.HasExtension(method.Options, options.E_Http) {
+			g.P("opts = append(opts, ", apiPkg, ".WithEndpoint(&", apiPkg, ".Endpoint{")
+			g.generateEndpoint(cCaseSvcName, method)
+			g.P("}))")
+		}
+	}
+	g.P("return s.Handle(s.NewHandler(&", cCaseSvcName, "{h}, opts...))")
+	g.P("}")
+	g.P()
+
+	g.P("type ", unexport(cCaseSvcName), "Handler struct {")
+	g.P(serverType)
 	g.P("}")
 }
 
